@@ -16,12 +16,12 @@ By combining the pattern-recognition power of **Neural Networks** with the biolo
 
 ```mermaid
 graph TD
-    A[Early Biomarkers (Day 0-7)] --> B(Immune Encoder - AI)
-    B --> C{Biological θ}
-    C --> D(ODE Simulator - Mechanistic)
-    D --> E[Monte Carlo Simulations]
-    E --> F[Clinical Risk Assessment]
-    F --> G(FastAPI Endpoint)
+    A["Early Biomarkers (Day 0-7)"] --> B["Immune Encoder (AI)"]
+    B --> C["Biological θ"]
+    C --> D["ODE Simulator (Mechanistic)"]
+    D --> E["Monte Carlo Simulations"]
+    E --> F["Clinical Risk Assessment"]
+    F --> G["FastAPI Endpoint"]
 ```
 
 ## 🛠️ Tech Stack
@@ -71,4 +71,4 @@ The hybrid model has been benchmarked against traditional ML (XGBoost):
 
 ---
 
-*This project was developed for [User's Capstone Project Name]. It represents a bridge between clinical immunology and predictive machine learning.*
+*This project was developed for Capstone Project. It represents a bridge between clinical immunology and predictive machine learning.*
