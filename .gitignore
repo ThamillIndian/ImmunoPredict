@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Generated data (regenerate with scripts)
+backend/data/*.csv
+
+# Trained model artifacts (regenerate with training scripts)
+backend/artifacts/*.pt
+backend/artifacts/*.pkl
+backend/artifacts/*.json
+backend/artifacts/baseline/
+backend/artifacts/figures/
+
+# Database
+backend/db/*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (frontend)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Misc
+*.log
+.env

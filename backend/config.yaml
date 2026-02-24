@@ -1,0 +1,168 @@
+# ============================================================
+# ImmunoPredict — Central Configuration
+# ============================================================
+# All parameters, thresholds, and distributions in one place.
+# Every module reads from this file. Change here = change everywhere.
+# ============================================================
+
+# ----------------------------------------------------------
+# Population Distributions (per cohort)
+# ----------------------------------------------------------
+population:
+  train:
+    n_subjects: 500
+    age: { mean: 45, std: 15, min: 18, max: 80 }
+    bmi: { mean: 25, std: 4, min: 16, max: 35 }
+    sex_ratio: 0.5                             # probability of male (sex=1)
+    comorbidity_weights: [0.4, 0.3, 0.2, 0.1]  # P(score = 0, 1, 2, 3)
+    noise_level: 0.10                          # coefficient of variation for biomarker noise
+    missingness_rate: 0.05                     # fraction of biomarker values set to NaN
+
+  test_shift:
+    n_subjects: 200
+    age: { mean: 62, std: 12, min: 30, max: 80 }
+    bmi: { mean: 28, std: 5, min: 18, max: 35 }
+    sex_ratio: 0.55
+    comorbidity_weights: [0.2, 0.25, 0.3, 0.25]
+    noise_level: 0.15
+    missingness_rate: 0.12
+
+  new_vaccine:
+    n_subjects: 200
+    age: { mean: 45, std: 15, min: 18, max: 80 }
+    bmi: { mean: 25, std: 4, min: 16, max: 35 }
+    sex_ratio: 0.5
+    comorbidity_weights: [0.4, 0.3, 0.2, 0.1]
+    noise_level: 0.10
+    missingness_rate: 0.05
+
+# ----------------------------------------------------------
+# Timepoints
+# ----------------------------------------------------------
+timepoints: [0, 1, 3, 7, 14, 28, 90]
+early_days: [0, 1, 3, 7]                      # encoder input days
+titer_days: [14, 28, 90]                       # days where antibody titer is observed
+
+# ----------------------------------------------------------
+# Vaccine Stimulation Profiles
+# ----------------------------------------------------------
+# s(t) = s0 * exp(-delta * t)
+vaccines:
+  A:
+    s0: 25.0                                   # Increased from 15.0
+    delta: 0.8
+  B:
+    s0: 20.0                                   # Increased from 10.0
+    delta: 0.4
+
+# ----------------------------------------------------------
+# ODE Parameters
+# ----------------------------------------------------------
+ode:
+  kpd: 0.3
+  initial_conditions: [0.0, 0.0, 0.0]
+  solver: RK45
+  t_span: [0, 100]
+  t_eval_points: 200
+
+# ----------------------------------------------------------
+# θ — Individual Parameter Distributions
+# ----------------------------------------------------------
+theta:
+  activation:
+    population_mean: 0.5
+    population_std: 0.15
+    bounds: [0.1, 1.5]
+  prod:
+    population_mean: 1.2                       # Increased from 0.8
+    population_std: 0.3
+    bounds: [0.1, 4.0]
+  decay:
+    population_mean: 0.02                      # LOWERED from 0.03
+    population_std: 0.01
+    bounds: [0.001, 0.1]
+
+# ----------------------------------------------------------
+# Covariate → θ Modifiers
+# ----------------------------------------------------------
+# How patient demographics shift their θ from the population mean.
+theta_modifiers:
+  age_effect: -0.005                           # per year above 45 → reduce activation
+  bmi_effect: -0.008                           # per unit above 25 → reduce prod
+  comorbidity_effect: 0.015                    # per score point → increase decay
+  sex_female_boost: 0.05                       # females → boost activation
+
+# ----------------------------------------------------------
+# Biomarker Generation
+# ----------------------------------------------------------
+# Each biomarker = baseline + scale_factor * ODE_state + noise.
+# scale_from: I = innate, P = plasmablast, IP = both.
+biomarkers:
+  cytokine_il6:
+    baseline: 2.0
+    scale_from: I
+    scale_factor: 15.0
+  cytokine_tnfa:
+    baseline: 1.5
+    scale_from: I
+    scale_factor: 8.0
+  cytokine_ifng:
+    baseline: 0.8
+    scale_from: IP
+    scale_factor_I: 3.0
+    scale_factor_P: 5.0
+  wbc:
+    baseline: 7.0
+    scale_from: IP
+    scale_factor_I: 2.0
+    scale_factor_P: 1.5
+  lymphocytes:
+    baseline: 2.0
+    scale_from: P
+    scale_factor: 2.5
+  neutrophils:
+    baseline: 4.0
+    scale_from: I
+    scale_factor: 3.0
+
+# ----------------------------------------------------------
+# Decision Support Thresholds
+# ----------------------------------------------------------
+decision:
+  low_responder_threshold: 45.0               # Lowered from 55.0
+  risk_tiers:
+    high:
+      prob_low_responder_min: 0.7              # >70% chance of being low responder
+      confidence_min: 0.6                      # and model is fairly confident
+      action: FOLLOW_UP
+    medium:
+      action: TEST                             # default when uncertain or borderline
+    low:
+      prob_low_responder_max: 0.2              # <20% chance of being low responder
+      confidence_min: 0.6                      # and model is fairly confident
+      action: MONITOR
+
+# ----------------------------------------------------------
+# Training Hyperparameters
+# ----------------------------------------------------------
+training:
+  encoder:
+    hidden_layers: [128, 64, 32]
+    dropout: 0.2
+    learning_rate: 0.001
+    batch_size: 32
+    epochs: 200
+    early_stopping_patience: 20
+    train_val_split: 0.8
+  monte_carlo:
+    n_samples: 100                             # θ samples for confidence bands
+  stage1:
+    n_restarts: 5                              # random restarts per patient
+    optimizer: L-BFGS-B
+    fit_quality_threshold: 0.95                # R² threshold to keep patient fit
+  baseline:
+    xgboost:
+      n_estimators: 200
+      max_depth: 6
+      learning_rate: 0.1
+    cv_folds: 5
