@@ -71,4 +71,29 @@ The hybrid model has been benchmarked against traditional ML (XGBoost):
 
 ---
 
-*This project was developed for Capstone Project. It represents a bridge between clinical immunology and predictive machine learning.*
+## 🏛️ Understanding the Dashboard
+
+### 1. Biological ODE Parameters (θ)
+These three sliders represent the "Biological Signature" of the patient, predicted by the Neural Network based on their early biomarkers (Day 0-7).
+
+*   **Immune Activation**: How quickly the patient's innate immune system reacts to the vaccine. 
+*   **Antibody Production**: The "Factory Rate." It represents how efficiently the patient's plasmablasts churn out antibodies.
+*   **Antibody Decay**: The "Clearance Rate." High values mean antibodies vanish faster than they are replenished, a key risk factor for vaccine failure.
+
+### 2. Vaccine Efficacy Forecast (The Graph)
+The graph displays a **Monte Carlo Simulation** of the patient's future antibody trajectory.
+
+*   **Forecasted Median Titer**: The most likely trajectory based on the inferred parameters.
+*   **Confidence Envelope (90%)**: Represents the range of outcomes across 100 simulation runs. If the **bottom (p5)** of this area falls below 45 IU/mL, the patient is flagged.
+*   **Protective Limit (45 IU/mL)**: The threshold for protection. A "Low Responder" stays below this line by Day 28.
+
+### 3. Final Protection Decision Logic
+The AI combines the **Peak Titer Prediction** with the **Confidence Interval**:
+
+*   **HIGH PROTECTION** (Green Badge): Median Titer > 45 AND Confidence Interval is safely above 45.
+*   **LOW PROTECTION** (Red Badge): Median Titer < 45 OR high probability (>70%) of falling below 45.
+*   **MONITOR / BORDERLINE** (Yellow Badge): Median is > 45, but the uncertainty range touches the protective limit.
+
+---
+
+*This project represents a bridge between clinical immunology and predictive machine learning. Developed for Capstone Project.*

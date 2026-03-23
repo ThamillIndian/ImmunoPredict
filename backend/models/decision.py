@@ -15,25 +15,37 @@ def get_risk_tier(predicted_titer, confidence_interval, config):
     
     lower_bound, upper_bound = confidence_interval
     
-    # Simple logic based on threshold crossing
-    if upper_bound < threshold:
+    # Safer Logic:
+    if predicted_titer < threshold:
+        # If the median is already below threshold, it's definitely not LOW risk.
+        # It's HIGH if even the upper bound is struggling, otherwise MEDIUM.
+        if upper_bound < threshold:
+            return {
+                'tier': 'HIGH',
+                'prob_low_responder': 0.95,
+                'action': tiers['high']['action'],
+                'message': "High probability of inadequate response. Protective limit not reached."
+            }
+        else:
+            return {
+                'tier': 'MEDIUM',
+                'prob_low_responder': 0.60,
+                'action': tiers['medium']['action'],
+                'message': "Borderline response. Median titer below protective limit."
+            }
+    
+    # If median is above threshold, check the lower bound for uncertainty
+    if lower_bound < threshold:
         return {
-            'tier': 'HIGH',
-            'prob_low_responder': 0.95, # Symbolic for now
-            'action': tiers['high']['action'],
-            'message': "High risk of low vaccine response. Clinical follow-up recommended."
+            'tier': 'MEDIUM',
+            'prob_low_responder': 0.30,
+            'action': tiers['medium']['action'],
+            'message': "Median is protective, but uncertainty range falls below limit. Recommend monitoring."
         }
-    elif lower_bound > threshold:
+    else:
         return {
             'tier': 'LOW',
             'prob_low_responder': 0.05,
             'action': tiers['low']['action'],
-            'message': "Low risk. Standard monitoring sufficient."
-        }
-    else:
-        return {
-            'tier': 'MEDIUM',
-            'prob_low_responder': 0.50,
-            'action': tiers['medium']['action'],
-            'message': "Borderline response or high uncertainty. Recommendation: Serology test at Day 28."
+            'message': "Optimal response. Low risk of falling below protective limit."
         }

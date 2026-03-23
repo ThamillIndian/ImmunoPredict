@@ -3,11 +3,15 @@ from sqlalchemy.orm import Session
 import pandas as pd
 import datetime
 import json
+import logging
 from .schemas import PatientInput, PredictionResponse, RiskAssessment, PredictedParameters, TrajectoryPoint, BatchPredictionResponse
 from .database import get_db, PredictionLog
 from backend.models.pipeline import ImmunoPredictPipeline
 
 router = APIRouter()
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 # Global pipeline instance to be initialized in main.py
 pipeline = None
@@ -60,7 +64,9 @@ def patient_to_df(patient: PatientInput):
         if col in df.columns:
             val = df[col].iloc[0]
             if pd.isna(val):
-                final_data[col] = [0.0] # Fill with 0 as baseline does
+                # Retrieve the training mean from the scaler to correctly map to a 0.0 scaled feature
+                col_idx = list(feature_names).index(col)
+                final_data[col] = [pipeline.scaler.mean_[col_idx]] 
             else:
                 final_data[col] = [val]
         elif col.endswith("_observed"):
@@ -76,16 +82,30 @@ def patient_to_df(patient: PatientInput):
 
 @router.post("/predict", response_model=PredictionResponse)
 def predict(patient: PatientInput, db: Session = Depends(get_db)):
+    logger.info(f"--- Incoming Prediction Request | Patient: {patient.patient_id} ---")
+    logger.info(f"Demographics: Age={patient.age}, BMI={patient.bmi}, Vaccine={patient.vaccine_type}")
+    logger.info(f"Measurements received: {len(patient.measurements)} day(s).")
+    for m in patient.measurements:
+        logger.info(f"  Day {m.day} -> WBC: {m.wbc}, IL-6: {m.cytokine_il6}, TNF-a: {m.cytokine_tnfa}, IFN-g: {m.cytokine_ifng}")
+
     if pipeline is None:
+        logger.error("Pipeline is not initialized! Aborting prediction.")
         raise HTTPException(status_code=500, detail="Model pipeline not initialized")
     
     try:
         # 1. Format data
+        logger.info("Converting patient payload to dataframe matching scalar features...")
         X = patient_to_df(patient)
         
         # 2. Run Pipeline
+        logger.info("Executing Hybrid AI Pipeline (Scaling -> Encoder Neural Net -> ODE Monte Carlo -> Decision)...")
         res = pipeline.predict_patient(X, patient.vaccine_type)
         
+        logger.info(f"Pipeline Execution Complete.")
+        logger.info(f" -> Predicted Parameters (Theta): {res['predicted_theta']}")
+        logger.info(f" -> Forecasted Day 28 Titer: {res['predicted_titer_28']:.2f} IU/mL")
+        logger.info(f" -> Risk Decision: {res['risk_assessment']['tier']}")
+
         # 3. Format Response
         # Convert full trajectory to List[TrajectoryPoint]
         traj = []
